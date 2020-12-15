@@ -1,3 +1,8 @@
+import {GLTFLoader} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/loaders/GLTFLoader.js";
+import {OrbitControls} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/controls/OrbitControls.js";
+import {Water} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/objects/Water.js";
+import {PositionalAudioHelper} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/helpers/PositionalAudioHelper.js";
+
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -12,7 +17,7 @@ renderer.antialias = true;
 
 const domEvents = new THREEx.DomEvents(camera, renderer.domElement);
 
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
 controls.enableDamping = true;
 controls.mouseButtons = {
@@ -52,7 +57,7 @@ function load_font(path, cb) {
     }
 }
 function load_model(path, cb) {
-    const loader = new THREE.GLTFLoader();
+    const loader = new GLTFLoader();
     loader.load(
         path,
         function (data) {
@@ -134,7 +139,9 @@ load_texture('textures/space.jpg', function(texture) {
     }
     // Models
     load_model('models/mercedes_low.glb', function(model) {
+        const group = new THREE.Group();
         model.name = 'logo';
+        group.name = 'logo_group';
         model.material = new THREE.MeshStandardMaterial({
             color: 0xb31aff,
             metalness: 1,
@@ -145,7 +152,22 @@ load_texture('textures/space.jpg', function(texture) {
         model.position.x = 0;
         model.position.y = 1;
         model.rotation.x = Math.PI / 2;
-        scene.add(model);
+        group.add(model);
+
+        // use logo as a speaker
+        const song = new THREE.PositionalAudio(listener);
+        new THREE.AudioLoader().load('songs/psycho_trip.opus', function(buffer) {
+            song.setBuffer(buffer);
+            song.setLoop(true);
+            song.setVolume(1);
+            song.setRefDistance(50);
+            /*const helper = new PositionalAudioHelper(song);
+            song.add(helper);*/
+            song.play();
+            analyser = new THREE.AudioAnalyser(song, 128);
+        });
+        group.add(song);
+        scene.add(group);
     });
     load_model('models/soundcloud.glb', get_button_model_cb(
         'soundcloud',
@@ -198,7 +220,7 @@ load_texture('textures/space.jpg', function(texture) {
 
     // Water
     const waterGeometry = new THREE.RingGeometry(0, 500, 128, 64 );
-    const water = new THREE.Water(
+    const water = new Water(
         waterGeometry,
         {
             textureWidth: 64,
@@ -224,19 +246,6 @@ load_texture('textures/space.jpg', function(texture) {
     scene.add( water );
 });
 
-// Song
-const song = new THREE.Audio(listener);
-new THREE.AudioLoader().load('songs/psycho_trip.opus', function(buffer) {
-    song.setBuffer(buffer);
-    song.setLoop(true);
-    song.setVolume(1);
-    song.play();
-    analyser = new THREE.AudioAnalyser(song, 128);
-});
-
-const light = new THREE.AmbientLight( 0x404040 ); // soft white light
-scene.add( light );
-
 function animate() {
     setTimeout(() => {
         requestAnimationFrame(animate);
@@ -257,11 +266,12 @@ function animate() {
         }
     }
     const logo = scene.getObjectByName('logo');
+    const logo_group = scene.getObjectByName('logo_group');
     if (logo != undefined && analyser != undefined) {
         const data = analyser.getFrequencyData();
         const water = scene.getObjectByName('water');
-        const volume = data.reduce((a, b) => a+b) / data.length / 100;
-        logo.rotation.z += 0.005;
+        let volume = data.length > 0 ? data.reduce((a, b) => a+b) / data.length / 100.0 : 0.0;
+        logo_group.rotation.y += 0.005;
         logo.scale.set(volume, volume, volume);
 
         if (water != undefined) {
