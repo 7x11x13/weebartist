@@ -7,7 +7,7 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setPixelRatio( window.devicePixelRatio );
 renderer.toneMappingExposure = 20;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.antialias = true;
 
 const domEvents = new THREEx.DomEvents(camera, renderer.domElement);
@@ -20,6 +20,13 @@ controls.mouseButtons = {
 	MIDDLE: THREE.MOUSE.DOLLY,
 	RIGHT: THREE.MOUSE.ROTATE
 }
+controls.minDistance = 1;
+controls.maxDistance = 100;
+controls.maxPolarAngle = Math.PI * 3 / 4;
+
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
 
 document.body.appendChild( renderer.domElement );
 window.addEventListener( 'resize', onWindowResize, false );
@@ -28,6 +35,8 @@ let button_models = {};
 let model_ideal_rotation = {};
 let model_text_should_be_visible = {};
 let fonts = {};
+
+let analyser;
 
 function load_texture(path, cb) {
     new THREE.TextureLoader().load(path, cb);
@@ -55,10 +64,6 @@ function load_model(path, cb) {
         function (error) {
             console.log(error);
         });
-}
-
-async function load_scene() {
-    
 }
 
 load_texture('textures/space.jpg', function(texture) {
@@ -89,9 +94,10 @@ load_texture('textures/space.jpg', function(texture) {
             // add text on mouseover
             const text_material = new THREE.MeshLambertMaterial({
                 emissive: 0xffffff,
-                emissiveIntensity: 0.3,
+                emissiveIntensity: 0.8,
                 opacity: 0,
-                transparent: true
+                transparent: true,
+                depthTest: false
             });
             load_font('fonts/Roboto_Regular.json', function(font) {
                 const geometry = new THREE.TextGeometry(name, {
@@ -126,6 +132,7 @@ load_texture('textures/space.jpg', function(texture) {
             THREEx.Linkify(domEvents, model, url, false);
         }
     }
+    // Models
     load_model('models/mercedes_low.glb', function(model) {
         model.name = 'logo';
         model.material = new THREE.MeshStandardMaterial({
@@ -133,7 +140,7 @@ load_texture('textures/space.jpg', function(texture) {
             metalness: 1,
             roughness: 0.1,
             envMap: envMap,
-            envMapIntensity: 10
+            envMapIntensity: 50
         });
         model.position.x = 0;
         model.position.y = 1;
@@ -147,7 +154,7 @@ load_texture('textures/space.jpg', function(texture) {
             metalness: 1,
             roughness: 0.1,
             envMap: envMap,
-            envMapIntensity: 10
+            envMapIntensity: 50
         }),
         {
             x: -2,
@@ -163,7 +170,7 @@ load_texture('textures/space.jpg', function(texture) {
             metalness: 1,
             roughness: 0.1,
             envMap: envMap,
-            envMapIntensity: 10
+            envMapIntensity: 50
         }),
         {
             x: 0,
@@ -179,7 +186,7 @@ load_texture('textures/space.jpg', function(texture) {
             metalness: 1,
             roughness: 0.1,
             envMap: envMap,
-            envMapIntensity: 10
+            envMapIntensity: 50
         }),
         {
             x: 2,
@@ -188,12 +195,53 @@ load_texture('textures/space.jpg', function(texture) {
         'https://dweeb123.bandcamp.com/',
         10
     ));
+
+    // Water
+    const waterGeometry = new THREE.RingGeometry(0, 500, 128, 64 );
+    const water = new THREE.Water(
+        waterGeometry,
+        {
+            textureWidth: 64,
+            textureHeight: 64,
+            waterNormals: new THREE.TextureLoader().load( 'textures/waternormals.jpg', function ( texture ) {
+
+                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+            } ),
+            alpha: 1,
+            waterColor: 0x4b58c5,
+            distortionScale: 3.7,
+            envMap: envMap,
+            fog: scene.fog !== undefined,
+            sunDirection: new THREE.Vector3(0, 0, 0),
+            sunColor: 0x4b58c5
+        }
+    );
+    water.rotation.x = - Math.PI / 2;
+    water.position.y = -10;
+    water.name = 'water';
+    water.material.opacity = 0.5;
+    scene.add( water );
 });
+
+// Song
+const song = new THREE.Audio(listener);
+new THREE.AudioLoader().load('songs/psycho_trip.opus', function(buffer) {
+    song.setBuffer(buffer);
+    song.setLoop(true);
+    song.setVolume(1);
+    song.play();
+    analyser = new THREE.AudioAnalyser(song, 128);
+});
+
+const light = new THREE.AmbientLight( 0x404040 ); // soft white light
+scene.add( light );
 
 function animate() {
     setTimeout(() => {
         requestAnimationFrame(animate);
     }, 1000 / 60);
+    const time = performance.now() * 0.001;
     controls.update();
     for (const name of Object.keys(button_models)) {
         const model = button_models[name];
@@ -209,8 +257,28 @@ function animate() {
         }
     }
     const logo = scene.getObjectByName('logo');
-    if (logo != undefined) {
+    if (logo != undefined && analyser != undefined) {
+        const data = analyser.getFrequencyData();
+        const water = scene.getObjectByName('water');
+        const volume = data.reduce((a, b) => a+b) / data.length / 100;
         logo.rotation.z += 0.005;
+        logo.scale.set(volume, volume, volume);
+
+        if (water != undefined) {
+            const waterGeometry = water.geometry;
+            for (let i = 0; i < waterGeometry.vertices.length; ++i) {
+                let j = (i + 60) % (data.length * 2);
+                if (j >= data.length) {
+                    j = data.length * 2 - j - 1;
+                }
+                waterGeometry.vertices[i].z = data[j] / 40 * (i / data.length / 4);
+            }
+            waterGeometry.verticesNeedUpdate = true;
+            waterGeometry.normalsNeedUpdate = true;
+            waterGeometry.computeVertexNormals();
+            waterGeometry.computeFaceNormals();
+            water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
+        }
     }
     renderer.render( scene, camera );
 }
