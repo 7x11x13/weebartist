@@ -231,12 +231,12 @@ load_texture('textures/space.jpg', function(texture) {
 
             } ),
             alpha: 1,
-            waterColor: 0x4b58c5,
+            waterColor: 0xb8001c,
             distortionScale: 3.7,
             envMap: envMap,
             fog: scene.fog !== undefined,
             sunDirection: new THREE.Vector3(0, 0, 0),
-            sunColor: 0x4b58c5
+            sunColor: 0xb8001c
         }
     );
     water.rotation.x = - Math.PI / 2;
