@@ -34,6 +34,8 @@ camera.add(listener);
 
 document.body.appendChild( renderer.domElement );
 window.addEventListener( 'resize', onWindowResize, false );
+window.addEventListener( 'click', onUserAction, false );
+window.addEventListener( 'touchstart', onUserAction, false );
 
 let button_models = {};
 let model_ideal_rotation = {};
@@ -162,8 +164,6 @@ function init() {
                 song.setLoop(true);
                 song.setVolume(1);
                 song.setRefDistance(50);
-                /*const helper = new PositionalAudioHelper(song);
-                song.add(helper);*/
                 song.play();
                 analyser = new THREE.AudioAnalyser(song, 128);
             });
@@ -301,7 +301,11 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
 
     renderer.setSize( window.innerWidth, window.innerHeight );
+}
 
+// need this for Chrome autoplay policy
+function onUserAction() {
+    listener.context.resume();
 }
 
 init();
