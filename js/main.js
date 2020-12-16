@@ -267,10 +267,13 @@ function animate() {
     }
     const logo = scene.getObjectByName('logo');
     const logo_group = scene.getObjectByName('logo_group');
-    if (logo != undefined && analyser != undefined) {
+    const water = scene.getObjectByName('water');
+    if (water != undefined) {
+        water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
+    }
+    if (logo != undefined && analyser != undefined && water != undefined) {
         const data = analyser.getFrequencyData();
-        const water = scene.getObjectByName('water');
-        let volume = data.length > 0 ? data.reduce((a, b) => a+b) / data.length / 100.0 : 0.0;
+        const volume = data.length > 0 ? data.reduce((a, b) => a+b) / data.length / 100.0 : 0.0;
         logo_group.rotation.y += 0.005;
         logo.scale.set(volume, volume, volume);
 
@@ -287,7 +290,6 @@ function animate() {
             waterGeometry.normalsNeedUpdate = true;
             waterGeometry.computeVertexNormals();
             waterGeometry.computeFaceNormals();
-            water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
         }
     }
     renderer.render( scene, camera );
