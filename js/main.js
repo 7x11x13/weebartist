@@ -224,8 +224,8 @@ function init() {
         const water = new Water(
             waterGeometry,
             {
-                textureWidth: 64,
-                textureHeight: 64,
+                textureWidth: 1024,
+                textureHeight: 1024,
                 waterNormals: new THREE.TextureLoader().load( 'textures/waternormals.jpg', function ( texture ) {
 
                     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -233,17 +233,15 @@ function init() {
                 } ),
                 alpha: 1,
                 waterColor: 0xb8001c,
-                distortionScale: 3.7,
-                envMap: envMap,
+                distortionScale: 0.5,
                 fog: scene.fog !== undefined,
                 sunDirection: new THREE.Vector3(0, 0, 0),
                 sunColor: 0xb8001c
             }
         );
         water.rotation.x = - Math.PI / 2;
-        water.position.y = -10;
+        water.position.y = -3;
         water.name = 'water';
-        water.material.opacity = 0.5;
         scene.add( water );
     });
 }
