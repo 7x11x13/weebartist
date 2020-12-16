@@ -1,7 +1,6 @@
 import {GLTFLoader} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/loaders/GLTFLoader.js";
 import {OrbitControls} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/controls/OrbitControls.js";
 import {Water} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/objects/Water.js";
-import {PositionalAudioHelper} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/helpers/PositionalAudioHelper.js";
 
 const scene = new THREE.Scene();
 
