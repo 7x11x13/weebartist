@@ -4,8 +4,8 @@ import {Water} from "https://cdn.rawgit.com/mrdoob/three.js/master/examples/jsm/
 
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.1, 1000 );
-camera.position.z = 6;
+const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+camera.position.set(0, 1, 6);
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -104,7 +104,7 @@ async function init() {
         }
     );
     water.rotation.x = - Math.PI / 2;
-    water.position.y = -3;
+    water.position.y = -1;
     water.name = 'water';
     scene.add( water );
 
@@ -134,7 +134,7 @@ async function init() {
             emissiveIntensity: 0.8,
             opacity: 0,
             transparent: true,
-            depthTest: false
+            depthTest: true
         });
         const font = await load_font('fonts/Roboto_Regular.json');
         const text_geometry = new THREE.TextGeometry(name, {
@@ -145,9 +145,8 @@ async function init() {
         const text_mesh = new THREE.Mesh(text_geometry, text_material);
         text_geometry.center();
         text_mesh.name = 'text';
-        text_mesh.position.x = model.position.x;
-        text_mesh.position.z = model.position.z;
-        text_mesh.position.y = model.position.y - (bounding_size.y * 11 / 18);
+        text_mesh.position.copy(model.position);
+        text_mesh.position.y -= (bounding_size.y * 11 / 18);
         tilt_group.add(text_mesh);
         domEvents.addEventListener(model, 'mousemove touchstart touchmove', function(event) {
             const pos = model.worldToLocal(event.intersect.point);
@@ -254,21 +253,20 @@ async function init() {
         envMap: scene.envMap,
         envMapIntensity: 50
     });
-    logo_model.position.x = 0;
-    logo_model.position.y = 1;
-    logo_model.rotation.x = Math.PI / 2;
+    logo_model.position.set(0, 2, 0);
+    logo_model.geometry.rotateX(Math.PI / 2);
     logo_model.scale.set(0, 0, 0);
     logo_group.add(logo_model);
 
     const song = new THREE.PositionalAudio(listener);
-    new THREE.AudioLoader().load('songs/psycho_trip.opus', function(buffer) {
-        song.setBuffer(buffer);
-        song.setLoop(true);
-        song.setVolume(1);
-        song.setRefDistance(50);
-        song.play();
-        analyser = new THREE.AudioAnalyser(song, 128);
-    });
+    const audio = await load_audio('songs/psycho_trip.opus');
+    song.setBuffer(audio);
+    song.setLoop(true);
+    song.setVolume(1);
+    song.setRefDistance(10);
+    song.setMaxDistance(100);
+    song.play();
+    analyser = new THREE.AudioAnalyser(song, 128);
     // We can't add the song directly to the model because
     // it causes an error when the scale of the model changes
     logo_group.add(song);
