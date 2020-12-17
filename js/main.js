@@ -27,6 +27,7 @@ controls.mouseButtons = {
 controls.minDistance = 1;
 controls.maxDistance = 100;
 controls.maxPolarAngle = Math.PI * 3 / 4;
+controls.autoRotate = true;
 
 const listener = new THREE.AudioListener();
 camera.add(listener);
@@ -108,17 +109,21 @@ async function init() {
     scene.add( water );
 
     // Create buttons
-    async function create_button(model, name, material, position, url, scale=1) {
+    async function create_button(model, name, material, url, position, rotation, scale=1) {
         const group = new THREE.Group();
-        group.name = name;
-        group.position.x = position.x;
-        group.position.y = position.y;
+        group.position.copy(position);
+        group.rotation.copy(rotation);
+        const tilt_group = new THREE.Group();
+        group.add(tilt_group);
+        tilt_group.name = name;
         model_ideal_rotation[name] = {x: 0, y: 0};
 
         model.material = material;
+        model.geometry.center();
         model.geometry.scale(scale, scale, scale);
-        model.rotation.x = Math.PI / 2;
-        group.add(model);
+        model.geometry.rotateX(Math.PI / 2);
+        model.position.set(0, 0, 0);
+        tilt_group.add(model);
 
         const bounding_size = new THREE.Vector3();
         new THREE.Box3().setFromObject(model).getSize(bounding_size);
@@ -143,10 +148,11 @@ async function init() {
         text_mesh.position.x = model.position.x;
         text_mesh.position.z = model.position.z;
         text_mesh.position.y = model.position.y - (bounding_size.y * 11 / 18);
-        group.add(text_mesh);
+        tilt_group.add(text_mesh);
         domEvents.addEventListener(model, 'mousemove touchstart touchmove', function(event) {
-            const x = (event.intersect.point.x - (group.position.x + model.position.x)) / bounding_size.x;
-            const y = (event.intersect.point.y - (group.position.y + model.position.y)) / bounding_size.y;
+            const pos = model.worldToLocal(event.intersect.point);
+            const x = pos.x * model.scale.x;
+            const y = pos.y * model.scale.y;
             const ideal_x = (-y) * (Math.PI / 6);
             const ideal_y = x * (Math.PI / 6);
             model_ideal_rotation[name].x = ideal_x;
@@ -158,63 +164,83 @@ async function init() {
             model_ideal_rotation[name].y = 0;
             model_text_should_be_visible[name] = false;
         });
-        scene.add(group);
-        button_models[name] = group;
+        button_models[name] = tilt_group;
         THREEx.Linkify(domEvents, model, url, false);
-        return true;
+        return group;
     }
 
-    create_button(
-        (await load_model('models/soundcloud.glb')).scene.children[0],
-        'soundcloud',
-        new THREE.MeshStandardMaterial( {
-            color: 0xe68200,
-            metalness: 1,
-            roughness: 0.1,
-            envMap: scene.envMap,
-            envMapIntensity: 50
-        }),
-        {
-            x: -2,
-            y: -2
-        },
-        'https://soundcloud.com/weebartist/',
-        10
+    let buttons_group = new THREE.Group();
+    buttons_group.name = 'buttons';
+
+    buttons_group.add(
+        await create_button(
+            (await load_model('models/soundcloud.glb')).scene.children[0],
+            'soundcloud',
+            new THREE.MeshStandardMaterial( {
+                color: 0xe68200,
+                metalness: 1,
+                roughness: 0.1,
+                envMap: scene.envMap,
+                envMapIntensity: 30
+            }),
+            'https://soundcloud.com/weebartist',
+            new THREE.Vector3(0, 0, 2),
+            new THREE.Euler(0, 0, 0),
+            10
+        )
     );
-    create_button(
-        (await load_model('models/spotify.glb')).scene.children[0],
-        'spotify',
-        new THREE.MeshStandardMaterial( {
-            color: 0x00d40e,
-            metalness: 1,
-            roughness: 0.1,
-            envMap: scene.envMap,
-            envMapIntensity: 50
-        }),
-        {
-            x: 0,
-            y: -2
-        },
-        'https://open.spotify.com/artist/1syTPWNsXkvNHNSMgl8jll',
-        10
+    buttons_group.add(
+        await create_button(
+            (await load_model('models/spotify.glb')).scene.children[0],
+            'spotify',
+            new THREE.MeshStandardMaterial( {
+                color: 0x00d40e,
+                metalness: 1,
+                roughness: 0.1,
+                envMap: scene.envMap,
+                envMapIntensity: 30
+            }),
+            'https://open.spotify.com/artist/1syTPWNsXkvNHNSMgl8jll',
+            new THREE.Vector3(2, 0, 0),
+            new THREE.Euler(0, Math.PI / 2, 0),
+            10
+        )
     );
-    create_button(
-        (await load_model('models/bandcamp.glb')).scene.children[0],
-        'bandcamp',
-        new THREE.MeshStandardMaterial( {
-            color: 0x17bdff,
-            metalness: 1,
-            roughness: 0.1,
-            envMap: scene.envMap,
-            envMapIntensity: 50
-        }),
-        {
-            x: 2,
-            y: -2
-        },
-        'https://dweeb123.bandcamp.com/',
-        10
+    buttons_group.add(
+        await create_button(
+            (await load_model('models/bandcamp.glb')).scene.children[0],
+            'bandcamp',
+            new THREE.MeshStandardMaterial( {
+                color: 0x17bdff,
+                metalness: 1,
+                roughness: 0.1,
+                envMap: scene.envMap,
+                envMapIntensity: 30
+            }),
+            'https://dweeb123.bandcamp.com',
+            new THREE.Vector3(-2, 0, 0),
+            new THREE.Euler(0, -Math.PI / 2, 0),
+            10
+        )
     );
+    buttons_group.add(
+        await create_button(
+            (await load_model('models/discord.glb')).scene.children[0],
+            'discord',
+            new THREE.MeshStandardMaterial( {
+                color: 0x7289da,
+                metalness: 1,
+                roughness: 0.1,
+                envMap: scene.envMap,
+                envMapIntensity: 30
+            }),
+            'https://discord.com/invite/jW8969P',
+            new THREE.Vector3(0, 0, -2),
+            new THREE.Euler(0, Math.PI, 0),
+            10
+        )
+    );
+    scene.add(buttons_group);
 
     // Set up logo/speaker
     const logo_model = (await load_model('models/mercedes_low.glb')).scene.children[0];
@@ -254,7 +280,9 @@ function animate() {
         requestAnimationFrame(animate);
     }, 1000 / 60);
     const time = performance.now() * 0.001;
+
     controls.update();
+
     for (const name of Object.keys(button_models)) {
         const model = button_models[name];
         // ease button rotation to ideal rotation
@@ -270,9 +298,14 @@ function animate() {
             }
         }
     }
+
     const logo = scene.getObjectByName('logo');
     const logo_group = scene.getObjectByName('logo_group');
     const water = scene.getObjectByName('water');
+    const buttons = scene.getObjectByName('buttons');
+    if (buttons != undefined) {
+        buttons.rotation.y += 0.005;
+    }
     if (water != undefined) {
         water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
     }
@@ -280,7 +313,7 @@ function animate() {
         const data = analyser.getFrequencyData();
         // average volume across all frequencies
         const volume = data.length > 0 ? data.reduce((a, b) => a+b) / data.length / 100.0 : 0.0;
-        logo_group.rotation.y += 0.005;
+        logo_group.rotation.y += 0.0005;
         logo.scale.set(volume, volume, volume);
 
         if (water != undefined) {
