@@ -8,8 +8,7 @@ const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.inner
 camera.position.set(0, 1, 6);
 
 const renderer = new THREE.WebGLRenderer();
-renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setPixelRatio( window.devicePixelRatio );
+onWindowResize();
 renderer.toneMappingExposure = 20;
 renderer.toneMapping = THREE.NoToneMapping;
 renderer.antialias = true;
@@ -338,11 +337,17 @@ function animate() {
 
 // event handlers
 function onWindowResize() {
+    if (window.visualViewport != undefined) {
+        camera.aspect = window.visualViewport.width / window.visualViewport.height;
+        camera.updateProjectionMatrix();
 
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+        renderer.setSize( window.visualViewport.width, window.visualViewport.height );
+    } else {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
 
-    renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+    }
 }
 
 // need this for Chrome autoplay policy
