@@ -109,7 +109,6 @@ async function init() {
 
     // Create buttons
     async function create_button(model, name, material, position, url, scale=1) {
-        console.log(model);
         const group = new THREE.Group();
         group.name = name;
         group.position.x = position.x;
@@ -121,7 +120,8 @@ async function init() {
         model.rotation.x = Math.PI / 2;
         group.add(model);
 
-        const bounding_size = new THREE.Box3().setFromObject(model).getSize();
+        const bounding_size = new THREE.Vector3();
+        new THREE.Box3().setFromObject(model).getSize(bounding_size);
 
         // add text on mouseover
         const text_material = new THREE.MeshLambertMaterial({
