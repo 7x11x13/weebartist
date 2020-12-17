@@ -271,7 +271,7 @@ function animate() {
     if (water != undefined) {
         water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
     }
-    if (logo != undefined && analyser != undefined && water != undefined) {
+    if (logo != undefined && analyser != undefined) {
         const data = analyser.getFrequencyData();
         const volume = data.length > 0 ? data.reduce((a, b) => a+b) / data.length / 100.0 : 0.0;
         logo_group.rotation.y += 0.005;
@@ -280,11 +280,12 @@ function animate() {
         if (water != undefined) {
             const waterGeometry = water.geometry;
             for (let i = 0; i < waterGeometry.vertices.length; ++i) {
+                // mirror frequency data
                 let j = (i + 60) % (data.length * 2);
                 if (j >= data.length) {
                     j = data.length * 2 - j - 1;
                 }
-                waterGeometry.vertices[i].z = data[j] / 40 * (i / data.length / 4);
+                waterGeometry.vertices[i].z = data[j] / 40 * (i / data.length / 4) * Math.abs(Math.sin((i / data.length)/64 + time));
             }
             waterGeometry.verticesNeedUpdate = true;
             waterGeometry.normalsNeedUpdate = true;
