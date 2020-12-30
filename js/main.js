@@ -28,14 +28,10 @@ controls.maxDistance = 100;
 controls.maxPolarAngle = Math.PI * 3 / 4;
 controls.autoRotate = true;
 
-const listener = new THREE.AudioListener();
-camera.add(listener);
+let listener;
 
-
-document.body.appendChild( renderer.domElement );
-window.addEventListener( 'resize', onWindowResize, false );
-window.addEventListener( 'click', onUserAction, false );
-window.addEventListener( 'touchstart', onUserAction, false );
+document.getElementById('container').appendChild( renderer.domElement );
+window.addEventListener('resize', onWindowResize, false );
 
 let button_models = {};
 let model_ideal_rotation = {};
@@ -69,6 +65,51 @@ async function load_audio(path) {
         new THREE.AudioLoader().load(path, resolve, undefined, reject);
     });
 }
+
+let song;
+async function play_song() {
+    if (listener === undefined) {
+        listener = new THREE.AudioListener()
+        camera.add(listener);
+        song = new THREE.PositionalAudio(listener);
+        // If browser can play opus, load the opus song file
+        // opus is about half the file size of an mp3 with similar quality
+        const audioTest = document.createElement('audio');
+        let audio_file = 'songs/psycho_trip.mp3';
+        if (audioTest.canPlayType('audio/ogg; codecs=opus') === 'probably') {
+            audio_file = 'songs/psycho_trip.opus';
+        }
+        audioTest.remove()
+        const audio = await load_audio(audio_file);
+        song.setBuffer(audio);
+        song.setLoop(true);
+        song.setVolume(1);
+        song.setRefDistance(10);
+        song.setMaxDistance(100);
+        song.play();
+        analyser = new THREE.AudioAnalyser(song, 128);
+        // We can't add the song directly to the model because
+        // it causes an error when the scale of the model changes
+        // so we add it to a group instead
+        const logo_group = scene.getObjectByName('logo_group')
+        if (logo_group != undefined) {
+            logo_group.add(song);
+        }
+    } else {
+        if (listener.context.state === 'suspended') {
+            listener.context.resume()
+        }
+    }
+}
+
+// Need this for browsers that block audio from autoplaying
+// not sure which ones are necessary on which browsers ¯\_(ツ)_/¯
+document.getElementById('container').addEventListener('click', play_song, false );
+document.getElementById('container').addEventListener('touchstart', play_song, false );
+document.getElementById('container').addEventListener('touchend', play_song, false );
+document.getElementById('container').addEventListener('touchcancel', play_song, false );
+document.getElementById('container').addEventListener('mouseup', play_song, false );
+document.getElementById('container').addEventListener('touchmove', play_song, false );
 
 async function init() {
     // Create skybox
@@ -257,19 +298,15 @@ async function init() {
     logo_model.scale.set(0, 0, 0);
     logo_group.add(logo_model);
 
-    const song = new THREE.PositionalAudio(listener);
-    const audio = await load_audio('songs/psycho_trip.opus');
-    song.setBuffer(audio);
-    song.setLoop(true);
-    song.setVolume(1);
-    song.setRefDistance(10);
-    song.setMaxDistance(100);
-    song.play();
-    analyser = new THREE.AudioAnalyser(song, 128);
-    // We can't add the song directly to the model because
-    // it causes an error when the scale of the model changes
-    logo_group.add(song);
+    // If we created the song before loading the model
+    // we never added the song to the model
+    if (song != undefined) {
+        logo_group.add(song);
+    }
+
     scene.add(logo_group);
+
+    play_song();
 }
 
 function animate() {
@@ -348,11 +385,6 @@ function onWindowResize() {
 
         renderer.setSize( window.innerWidth, window.innerHeight );
     }
-}
-
-// need this for Chrome autoplay policy
-function onUserAction() {
-    listener.context.resume();
 }
 
 init();
